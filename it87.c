@@ -265,15 +265,15 @@ static const u8 IT87_REG_AUTO_BASE[] = { 0x60, 0x68, 0x70, 0x78, 0xa0, 0xa8 };
 
 #define IT87_REG_TEMP456_ENABLE	0x77
 
-#define NUM_VIN			ARRAY_SIZE(IT87_REG_VIN)
-#define NUM_VIN_LIMIT		8
-#define NUM_TEMP		6
-#define NUM_TEMP_OFFSET		ARRAY_SIZE(IT87_REG_TEMP_OFFSET)
-#define NUM_TEMP_LIMIT		3
-#define NUM_FAN			ARRAY_SIZE(IT87_REG_FAN)
-#define NUM_FAN_DIV		3
-#define NUM_PWM			ARRAY_SIZE(IT87_REG_PWM)
-#define NUM_AUTO_PWM		ARRAY_SIZE(IT87_REG_PWM)
+#define NUM_VIN         13  /* Represent maximum number of vin registers*/
+#define NUM_VIN_LIMIT   8
+#define NUM_TEMP        6
+#define NUM_TEMP_OFFSET 3   /* Represent maximum number of temp offset registers*/
+#define NUM_TEMP_LIMIT  3
+#define NUM_FAN         6   /* Represent maximum number of fan registers */
+#define NUM_FAN_DIV     3
+#define NUM_PWM         6   /* Represent maximum number of pwm registers */
+#define NUM_AUTO_PWM    6   /* Represent maximum number of auto pwm registers */
 
 struct it87_devices {
 	const char *name;
