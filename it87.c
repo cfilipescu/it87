@@ -15,6 +15,7 @@
  *            IT8622E  Super I/O chip w/LPC interface
  *            IT8623E  Super I/O chip w/LPC interface
  *            IT8628E  Super I/O chip w/LPC interface
+ *            IT8665E  Super I/O chip w/LPC interface
  *            IT8705F  Super I/O chip w/LPC interface
  *            IT8712F  Super I/O chip w/LPC interface
  *            IT8716F  Super I/O chip w/LPC interface
@@ -71,8 +72,9 @@
 #define DRVNAME "it87"
 
 enum chips { it87, it8712, it8716, it8718, it8720, it8721, it8728, it8732,
-	     it8771, it8772, it8781, it8782, it8783, it8786, it8790,
-	     it8792, it8603, it8620, it8622, it8628 };
+    it8771, it8772, it8781, it8782, it8783, it8786, it8790,
+    it8792, it8603, it8620, it8622, it8628,
+    it8665 };
 
 static unsigned short force_id;
 module_param(force_id, ushort, 0);
@@ -166,6 +168,7 @@ static inline void superio_exit(int ioreg)
 #define IT8622E_DEVID 0x8622
 #define IT8623E_DEVID 0x8623
 #define IT8628E_DEVID 0x8628
+#define IT8665E_DEVID 0x8665
 #define IT87_ACT_REG  0x30
 #define IT87_BASE_REG 0x60
 
@@ -468,6 +471,14 @@ static const struct it87_devices it87_devices[] = {
 		  | FEAT_IN7_INTERNAL | FEAT_SIX_PWM | FEAT_PWM_FREQ2
 		  | FEAT_SIX_TEMP | FEAT_VIN3_5V,
 		.peci_mask = 0x07,
+	},
+	[it8665] = {
+		.name = "it8665",
+		.suffix = "E",
+		.features = FEAT_NEWER_AUTOPWM | FEAT_16BIT_FANS
+		  | FEAT_AVCC3
+		  | FEAT_10_9MV_ADC | FEAT_IN7_INTERNAL | FEAT_SIX_FANS
+		  | FEAT_SIX_PWM | FEAT_SIX_TEMP,
 	},
 };
 
@@ -2471,6 +2482,9 @@ static int __init it87_find(int sioaddr, unsigned short *address,
 	case IT8628E_DEVID:
 		sio_data->type = it8628;
 		break;
+	case IT8665E_DEVID:
+		sio_data->type = it8665;
+		break;
 	case 0xffff:	/* No device at all */
 		goto exit;
 	default:
@@ -3049,18 +3063,16 @@ static int it87_probe(struct platform_device *pdev)
 	int enable_pwm_interface;
 	struct device *hwmon_dev;
 
-	res = platform_get_resource(pdev, IORESOURCE_IO, 0);
-	if (!devm_request_region(&pdev->dev, res->start, IT87_EC_EXTENT,
-				 DRVNAME)) {
-		dev_err(dev, "Failed to request region 0x%lx-0x%lx\n",
-			(unsigned long)res->start,
-			(unsigned long)(res->start + IT87_EC_EXTENT - 1));
-		return -EBUSY;
-	}
-
-	data = devm_kzalloc(&pdev->dev, sizeof(struct it87_data), GFP_KERNEL);
+	data = devm_kzalloc(dev, sizeof(struct it87_data), GFP_KERNEL);
 	if (!data)
 		return -ENOMEM;
+
+	res = platform_get_resource(pdev, IORESOURCE_IO, 0);
+	if (!devm_request_region(dev, res->start, IT87_EC_EXTENT,
+				 DRVNAME)) {
+		dev_err(dev, "Failed to request region %pR\n", res);
+		return -EBUSY;
+	}
 
 	data->addr = res->start;
 	data->sioaddr = sio_data->sioaddr;
