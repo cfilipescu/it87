@@ -237,11 +237,25 @@ static const u8 IT87_REG_FAN[]         = { 0x0d, 0x0e, 0x0f, 0x80, 0x82, 0x4c };
 static const u8 IT87_REG_FAN_MIN[]     = { 0x10, 0x11, 0x12, 0x84, 0x86, 0x4e };
 static const u8 IT87_REG_FANX[]        = { 0x18, 0x19, 0x1a, 0x81, 0x83, 0x4d };
 static const u8 IT87_REG_FANX_MIN[]    = { 0x1b, 0x1c, 0x1d, 0x85, 0x87, 0x4f };
+
+static const u8 IT87_REG_FAN_8665[] =	{ 0x0d, 0x0e, 0x0f, 0x80, 0x82, 0x93 };
+static const u8 IT87_REG_FAN_MIN_8665[] = {
+					0x10, 0x11, 0x12, 0x84, 0x86, 0xb2 };
+static const u8 IT87_REG_FANX_8665[] =	{ 0x18, 0x19, 0x1a, 0x81, 0x83, 0x94 };
+static const u8 IT87_REG_FANX_MIN_8665[] = {
+					0x1b, 0x1c, 0x1d, 0x85, 0x87, 0xb3 };
+
 static const u8 IT87_REG_TEMP_OFFSET[] = { 0x56, 0x57, 0x59 };
+
+static const u8 IT87_REG_TEMP_OFFSET_8686[] = {
+					0x56, 0x57, 0x59, 0x90, 0x91, 0x92 };
 
 #define IT87_REG_FAN_MAIN_CTRL 0x13
 #define IT87_REG_FAN_CTL       0x14
+
 static const u8 IT87_REG_PWM[]         = { 0x15, 0x16, 0x17, 0x7f, 0xa7, 0xaf };
+static const u8 IT87_REG_PWM_8665[] =	{ 0x15, 0x16, 0x17, 0x1e, 0x1f, 0x92 };
+
 static const u8 IT87_REG_PWM_DUTY[]    = { 0x63, 0x6b, 0x73, 0x7b, 0xa3, 0xab };
 
 static const u8 IT87_REG_VIN[]	= { 0x20, 0x21, 0x22, 0x23, 0x24, 0x25, 0x26,
@@ -251,8 +265,13 @@ static const u8 IT87_REG_VIN[]	= { 0x20, 0x21, 0x22, 0x23, 0x24, 0x25, 0x26,
 
 #define IT87_REG_VIN_MAX(nr)   (0x30 + (nr) * 2)
 #define IT87_REG_VIN_MIN(nr)   (0x31 + (nr) * 2)
-#define IT87_REG_TEMP_HIGH(nr) (0x40 + (nr) * 2)
-#define IT87_REG_TEMP_LOW(nr)  (0x41 + (nr) * 2)
+static const u8 IT87_REG_TEMP_HIGH[] =	{ 0x40, 0x42, 0x44, 0x46, 0xb4, 0xb6 };
+static const u8 IT87_REG_TEMP_LOW[] =	{ 0x41, 0x43, 0x45, 0x47, 0xb5, 0xb7 };
+
+static const u8 IT87_REG_TEMP_HIGH_8686[] = {
+					0x40, 0x42, 0x44, 0xb4, 0xb6, 0xb8 };
+static const u8 IT87_REG_TEMP_LOW_8686[] = {
+					0x41, 0x43, 0x45, 0xb5, 0xb7, 0xb9 };
 
 #define IT87_REG_VIN_ENABLE    0x50
 #define IT87_REG_TEMP_ENABLE   0x51
@@ -535,6 +554,17 @@ struct it87_data {
 	u32 features;
 	u8 peci_mask;
 	u8 old_peci_mask;
+
+	const u8 *REG_FAN;
+	const u8 *REG_FANX;
+	const u8 *REG_FAN_MIN;
+	const u8 *REG_FANX_MIN;
+
+	const u8 *REG_PWM;
+
+	const u8 *REG_TEMP_OFFSET;
+	const u8 *REG_TEMP_LOW;
+	const u8 *REG_TEMP_HIGH;
 
 	unsigned short addr;
 	const char *name;
@@ -820,9 +850,9 @@ static struct it87_data *it87_update_device(struct device *dev)
 				continue;
 
 			data->temp[i][1] =
-				it87_read_value(data, IT87_REG_TEMP_LOW(i));
+				it87_read_value(data, IT87_REG_TEMP_LOW[i]);
 			data->temp[i][2] =
-				it87_read_value(data, IT87_REG_TEMP_HIGH(i));
+				it87_read_value(data, IT87_REG_TEMP_HIGH[i]);
 		}
 
 		/* Newer chips don't have clock dividers */
@@ -989,10 +1019,10 @@ static ssize_t set_temp(struct device *dev, struct device_attribute *attr,
 	switch (index) {
 	default:
 	case 1:
-		reg = IT87_REG_TEMP_LOW(nr);
+		reg = IT87_REG_TEMP_LOW[nr];
 		break;
 	case 2:
-		reg = IT87_REG_TEMP_HIGH(nr);
+		reg = IT87_REG_TEMP_HIGH[nr];
 		break;
 	case 3:
 		regval = it87_read_value(data, IT87_REG_BEEP_ENABLE);
@@ -2866,9 +2896,9 @@ static void it87_check_limit_regs(struct it87_data *data)
 			it87_write_value(data, IT87_REG_VIN_MIN(i), 0);
 	}
 	for (i = 0; i < NUM_TEMP_LIMIT; i++) {
-		reg = it87_read_value(data, IT87_REG_TEMP_HIGH(i));
+		reg = it87_read_value(data, IT87_REG_TEMP_HIGH[i]);
 		if (reg == 0xff)
-			it87_write_value(data, IT87_REG_TEMP_HIGH(i), 127);
+			it87_write_value(data, IT87_REG_TEMP_HIGH[i], 127);
 	}
 }
 
@@ -2924,6 +2954,55 @@ static void it87_start_monitoring(struct it87_data *data)
 	it87_write_value(data, IT87_REG_CONFIG,
 			 (it87_read_value(data, IT87_REG_CONFIG) & 0x3e)
 			 | (update_vbat ? 0x41 : 0x01));
+}
+
+static void it87_init_regs(struct platform_device *pdev)
+{
+	struct it87_data *data = platform_get_drvdata(pdev);
+
+	/* Initialize chip specific register pointers */
+	switch (data->type) {
+	case it8628:
+		data->REG_FAN = IT87_REG_FAN;
+		data->REG_FANX = IT87_REG_FANX;
+		data->REG_FAN_MIN = IT87_REG_FAN_MIN;
+		data->REG_FANX_MIN = IT87_REG_FANX_MIN;
+		data->REG_PWM = IT87_REG_PWM;
+		data->REG_TEMP_OFFSET = IT87_REG_TEMP_OFFSET_8686;
+		data->REG_TEMP_LOW = IT87_REG_TEMP_LOW_8686;
+		data->REG_TEMP_HIGH = IT87_REG_TEMP_HIGH_8686;
+		break;
+	case it8665:
+		data->REG_FAN = IT87_REG_FAN_8665;
+		data->REG_FANX = IT87_REG_FANX_8665;
+		data->REG_FAN_MIN = IT87_REG_FAN_MIN_8665;
+		data->REG_FANX_MIN = IT87_REG_FANX_MIN_8665;
+		data->REG_PWM = IT87_REG_PWM_8665;
+		data->REG_TEMP_OFFSET = IT87_REG_TEMP_OFFSET;
+		data->REG_TEMP_LOW = IT87_REG_TEMP_LOW;
+		data->REG_TEMP_HIGH = IT87_REG_TEMP_HIGH;
+		break;
+	case it8622:
+		data->REG_FAN = IT87_REG_FAN;
+		data->REG_FANX = IT87_REG_FANX;
+		data->REG_FAN_MIN = IT87_REG_FAN_MIN;
+		data->REG_FANX_MIN = IT87_REG_FANX_MIN;
+		data->REG_PWM = IT87_REG_PWM_8665;
+		data->REG_TEMP_OFFSET = IT87_REG_TEMP_OFFSET;
+		data->REG_TEMP_LOW = IT87_REG_TEMP_LOW;
+		data->REG_TEMP_HIGH = IT87_REG_TEMP_HIGH;
+		break;
+	default:
+		data->REG_FAN = IT87_REG_FAN;
+		data->REG_FANX = IT87_REG_FANX;
+		data->REG_FAN_MIN = IT87_REG_FAN_MIN;
+		data->REG_FANX_MIN = IT87_REG_FANX_MIN;
+		data->REG_PWM = IT87_REG_PWM;
+		data->REG_TEMP_OFFSET = IT87_REG_TEMP_OFFSET;
+		data->REG_TEMP_LOW = IT87_REG_TEMP_LOW;
+		data->REG_TEMP_HIGH = IT87_REG_TEMP_HIGH;
+		break;
+	}
 }
 
 /* Called when we have found a new IT87. */
@@ -3111,6 +3190,9 @@ static int it87_probe(struct platform_device *pdev)
 	platform_set_drvdata(pdev, data);
 
 	mutex_init(&data->update_lock);
+
+	/* Initialize register pointers */
+	it87_init_regs(pdev);
 
 	/* Check PWM configuration */
 	enable_pwm_interface = it87_check_pwm(dev);
